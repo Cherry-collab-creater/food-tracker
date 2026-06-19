@@ -402,12 +402,12 @@
 <!-- API Key settings overlay -->
 <div class="overlay" id="settings-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="設定 API 金鑰">
   <div class="modal">
-    <h2><i class="ti ti-key" style="margin-right:6px;vertical-align:-2px"></i>設定 Anthropic API 金鑰</h2>
-    <p>拍照辨識功能需要 Anthropic API 金鑰。金鑰僅儲存在你的瀏覽器本機，不會上傳至任何伺服器。<br><br>
-    取得方式：前往 <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> → API Keys → 建立新金鑰。</p>
+    <h2><i class="ti ti-key" style="margin-right:6px;vertical-align:-2px"></i>設定 Gemini API 金鑰</h2>
+    <p>拍照辨識功能需要 Gemini API 金鑰（免費）。金鑰僅儲存在你的瀏覽器本機，不會上傳至任何伺服器。<br><br>
+    取得方式：前往 <a href="https://aistudio.google.com/app/apikey" target="_blank" rel="noopener">aistudio.google.com/app/apikey</a> → Get API key → Create API key。</p>
     <div class="field">
       <label>API 金鑰</label>
-      <input id="api-key-input" type="password" placeholder="sk-ant-..." />
+      <input id="api-key-input" type="password" placeholder="AIza..." />
     </div>
     <div style="display:flex; gap:8px; margin-top:14px;">
       <button class="btn btn-primary" style="flex:1" onclick="saveKey()">儲存</button>
@@ -513,11 +513,11 @@ async function handlePhoto(e) {
   spinner.style.display = '';
   msg.textContent = 'AI 辨識中，請稍候…';
 
-  const apiKey = localStorage.getItem('anthropic_api_key') || '';
+  const apiKey = localStorage.getItem('gemini_api_key') || '';
   if (!apiKey) {
     banner.className = 'ai-banner show error';
     spinner.style.display = 'none';
-    msg.textContent = '尚未設定 API 金鑰，請點右上角設定後再試。';
+    msg.textContent = '尚未設定 Gemini API 金鑰，請點右上角設定後再試。';
     showFields('', '', '', '');
     return;
   }
@@ -525,27 +525,24 @@ async function handlePhoto(e) {
   const base64 = await toBase64(file);
 
   try {
-    const resp = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true',
-      },
-      body: JSON.stringify({
-        model: 'claude-sonnet-4-6',
-        max_tokens: 512,
-        system: '你是食物辨識助手。請辨識圖片中的食物，僅回傳純 JSON（不含 markdown 或說明），格式：{"name":"食物名稱","cat":"分類","loc":"冷藏或冷凍或常溫","expiry_days":數字}。分類只能是以下之一：🥛 乳製品、🥩 肉類、🥬 蔬菜、🍎 水果、🥚 蛋類、🍞 烘焙、🧃 飲料、🥫 罐頭、🍱 其他。expiry_days 是從今天起預估的保存天數（整數）。',
-        messages: [{
-          role: 'user',
-          content: [
-            { type: 'image', source: { type: 'base64', media_type: file.type, data: base64 } },
-            { type: 'text', text: '請辨識這個食物。' }
-          ]
-        }]
-      })
-    });
+    const prompt = '你是食物辨識助手。請辨識圖片中的食物，僅回傳純 JSON（不含 markdown 或說明），格式：{"name":"食物名稱","cat":"分類","loc":"冷藏或冷凍或常溫","expiry_days":數字}。分類只能是以下之一：🥛 乳製品、🥩 肉類、🥬 蔬菜、🍎 水果、🥚 蛋類、🍞 烘焙、🧃 飲料、🥫 罐頭、🍱 其他。expiry_days 是從今天起預估的保存天數（整數）。';
+
+    const resp = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`,
+      {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          contents: [{
+            parts: [
+              { text: prompt },
+              { inline_data: { mime_type: file.type, data: base64 } }
+            ]
+          }],
+          generationConfig: { maxOutputTokens: 512, temperature: 0.1 }
+        })
+      }
+    );
 
     if (!resp.ok) {
       const err = await resp.json().catch(() => ({}));
@@ -553,7 +550,7 @@ async function handlePhoto(e) {
     }
 
     const data = await resp.json();
-    const raw  = (data.content || []).map(c => c.text || '').join('').trim();
+    const raw  = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
     const clean = raw.replace(/```json|```/g, '').trim();
     const parsed = JSON.parse(clean);
 
@@ -697,7 +694,7 @@ function updateStats() {
 
 // ── API Key settings ──────────────────────────────────────
 function openSettings() {
-  document.getElementById('api-key-input').value = localStorage.getItem('anthropic_api_key') || '';
+  document.getElementById('api-key-input').value = localStorage.getItem('gemini_api_key') || '';
   document.getElementById('settings-overlay').style.display = 'flex';
 }
 function closeSettings() {
@@ -705,8 +702,8 @@ function closeSettings() {
 }
 function saveKey() {
   const val = document.getElementById('api-key-input').value.trim();
-  if (val) localStorage.setItem('anthropic_api_key', val);
-  else localStorage.removeItem('anthropic_api_key');
+  if (val) localStorage.setItem('gemini_api_key', val);
+  else localStorage.removeItem('gemini_api_key');
   closeSettings();
   showToast('✓ 設定已儲存');
 }
