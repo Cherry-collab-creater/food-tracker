@@ -1,0 +1,737 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>食物期限追蹤器</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.7.0/dist/tabler-icons.min.css" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #f7f7f5;
+    --surface: #ffffff;
+    --surface2: #f1f0ec;
+    --border: rgba(0,0,0,0.1);
+    --border-md: rgba(0,0,0,0.18);
+    --text: #1a1a18;
+    --text-2: #5a5a56;
+    --text-3: #999891;
+    --green: #1d9e75; --green-bg: #e1f5ee; --green-text: #085041;
+    --amber: #ba7517; --amber-bg: #faeeda; --amber-text: #633806;
+    --red: #c0392b;   --red-bg: #fcebeb;   --red-text: #791f1f;
+    --blue: #185fa5;  --blue-bg: #e6f1fb;  --blue-text: #0c447c;
+    --radius: 10px; --radius-sm: 7px;
+    --shadow: 0 2px 12px rgba(0,0,0,0.07);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1a1a18; --surface: #252523; --surface2: #2e2e2b;
+      --border: rgba(255,255,255,0.1); --border-md: rgba(255,255,255,0.18);
+      --text: #ededea; --text-2: #a8a89e; --text-3: #666660;
+      --green-bg: #04342c; --green-text: #9fe1cb;
+      --amber-bg: #412402; --amber-text: #fac775;
+      --red-bg: #501313; --red-text: #f7c1c1;
+      --blue-bg: #042c53; --blue-text: #b5d4f4;
+    }
+  }
+
+  body {
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 15px;
+    line-height: 1.6;
+  }
+
+  header {
+    background: var(--surface);
+    border-bottom: 0.5px solid var(--border);
+    padding: 0 1.5rem;
+    position: sticky; top: 0; z-index: 50;
+  }
+
+  .header-inner {
+    max-width: 640px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between;
+    height: 56px;
+  }
+
+  .logo { font-size: 16px; font-weight: 600; display: flex; align-items: center; gap: 8px; }
+  .logo i { font-size: 20px; color: var(--green); }
+
+  .tab-bar {
+    max-width: 640px; margin: 0 auto;
+    display: flex; gap: 6px; padding: 1rem 1rem 0;
+  }
+
+  .tab {
+    flex: 1; text-align: center; padding: 9px 12px;
+    font-size: 13px; font-weight: 500; border-radius: var(--radius-sm);
+    cursor: pointer; border: 0.5px solid var(--border);
+    background: var(--surface); color: var(--text-2);
+    transition: all 0.15s; user-select: none;
+  }
+  .tab.active { background: var(--blue-bg); color: var(--blue-text); border-color: transparent; }
+  .tab i { margin-right: 4px; font-size: 15px; vertical-align: -2px; }
+
+  .container { max-width: 640px; margin: 0 auto; padding: 1rem; }
+
+  .panel { display: none; }
+  .panel.active { display: block; }
+
+  /* Method toggle */
+  .method-toggle {
+    display: flex; border: 0.5px solid var(--border); border-radius: var(--radius-sm);
+    overflow: hidden; margin-bottom: 1rem; background: var(--surface2);
+  }
+  .method-btn {
+    flex: 1; padding: 9px; text-align: center; font-size: 13px; font-weight: 500;
+    cursor: pointer; background: transparent; color: var(--text-2);
+    border: none; transition: all 0.15s; user-select: none;
+  }
+  .method-btn.active { background: var(--surface); color: var(--text); }
+  .method-btn i { margin-right: 5px; font-size: 15px; vertical-align: -2px; }
+
+  /* Cards */
+  .card {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 1.25rem; margin-bottom: 1rem;
+    box-shadow: var(--shadow);
+  }
+
+  /* Form */
+  .field { margin-bottom: 14px; }
+  .field:last-child { margin-bottom: 0; }
+  .field label { display: block; font-size: 12px; font-weight: 500; color: var(--text-2); margin-bottom: 5px; letter-spacing: 0.02em; }
+  .field input, .field select, .field textarea {
+    width: 100%; padding: 9px 12px; font-size: 14px;
+    border: 0.5px solid var(--border-md); border-radius: var(--radius-sm);
+    background: var(--surface); color: var(--text);
+    outline: none; transition: border-color 0.15s; font-family: inherit;
+  }
+  .field input:focus, .field select:focus { border-color: var(--blue); }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+
+  /* Camera */
+  .camera-zone {
+    border: 1.5px dashed var(--border-md); border-radius: var(--radius);
+    padding: 2.5rem 1rem; text-align: center; cursor: pointer;
+    margin-bottom: 1rem; transition: background 0.15s;
+  }
+  .camera-zone:hover { background: var(--surface2); }
+  .camera-zone i { font-size: 36px; color: var(--text-3); display: block; margin-bottom: 10px; }
+  .camera-zone p { font-size: 14px; font-weight: 500; color: var(--text-2); }
+  .camera-zone span { font-size: 12px; color: var(--text-3); }
+  #cam-preview { width: 100%; border-radius: var(--radius-sm); display: none; margin-bottom: 1rem; max-height: 280px; object-fit: cover; }
+
+  .ai-banner {
+    background: var(--green-bg); border: 0.5px solid rgba(29,158,117,0.3);
+    border-radius: var(--radius-sm); padding: 10px 14px; margin-bottom: 1rem;
+    font-size: 13px; color: var(--green-text); display: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .ai-banner.show { display: flex; }
+  .ai-banner.error { background: var(--red-bg); color: var(--red-text); border-color: rgba(192,57,43,0.3); }
+
+  /* Buttons */
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 10px 18px; font-size: 14px; font-weight: 500;
+    border-radius: var(--radius-sm); cursor: pointer;
+    border: 0.5px solid var(--border-md); background: var(--surface);
+    color: var(--text); transition: all 0.15s; font-family: inherit;
+    user-select: none;
+  }
+  .btn:hover { background: var(--surface2); }
+  .btn-primary { background: var(--blue-bg); color: var(--blue-text); border-color: transparent; width: 100%; justify-content: center; }
+  .btn-primary:hover { opacity: 0.88; background: var(--blue-bg); }
+  .btn-primary:disabled { opacity: 0.4; cursor: not-allowed; }
+  .btn-icon { padding: 7px 9px; }
+  .btn-danger { color: var(--red); border-color: rgba(192,57,43,0.3); }
+  .btn-danger:hover { background: var(--red-bg); }
+
+  /* Stats */
+  .stats-row { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 1.25rem; }
+  .stat { background: var(--surface); border: 0.5px solid var(--border); border-radius: var(--radius-sm); padding: 12px; text-align: center; }
+  .stat-num { font-size: 24px; font-weight: 600; color: var(--text); }
+  .stat-label { font-size: 11px; color: var(--text-2); margin-top: 2px; }
+  .stat.warn .stat-num { color: var(--amber); }
+  .stat.danger .stat-num { color: var(--red); }
+
+  /* Filters */
+  .filter-row { display: flex; gap: 6px; margin-bottom: 1rem; flex-wrap: wrap; }
+  .chip {
+    padding: 5px 13px; border-radius: 20px; font-size: 12px; font-weight: 500;
+    cursor: pointer; border: 0.5px solid var(--border-md);
+    background: var(--surface); color: var(--text-2); user-select: none;
+    transition: all 0.12s;
+  }
+  .chip.active { background: var(--blue-bg); color: var(--blue-text); border-color: transparent; }
+
+  /* Food list */
+  .food-list { display: flex; flex-direction: column; gap: 7px; }
+  .food-item {
+    background: var(--surface); border: 0.5px solid var(--border);
+    border-radius: var(--radius); padding: 12px 14px;
+    display: flex; align-items: center; gap: 12px;
+    transition: border-color 0.15s;
+  }
+  .food-item.expiring { border-color: var(--amber); background: var(--amber-bg); }
+  .food-item.expired { border-color: var(--red); background: var(--red-bg); }
+  .food-emoji { font-size: 26px; width: 42px; text-align: center; flex-shrink: 0; }
+  .food-info { flex: 1; min-width: 0; }
+  .food-name { font-size: 14px; font-weight: 600; color: var(--text); }
+  .food-meta { font-size: 12px; color: var(--text-2); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .badge { font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 20px; flex-shrink: 0; white-space: nowrap; }
+  .badge-ok   { background: var(--green-bg); color: var(--green-text); }
+  .badge-soon { background: var(--amber-bg); color: var(--amber-text); }
+  .badge-exp  { background: var(--red-bg);   color: var(--red-text);   }
+  .food-actions { flex-shrink: 0; }
+
+  /* Empty state */
+  .empty { text-align: center; padding: 3rem 1rem; color: var(--text-3); }
+  .empty i { font-size: 44px; display: block; margin-bottom: 10px; }
+  .empty p { font-size: 14px; }
+
+  /* Toast */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--text); color: var(--bg);
+    padding: 10px 20px; border-radius: 30px; font-size: 13px; font-weight: 500;
+    opacity: 0; transition: all 0.25s; pointer-events: none; z-index: 999;
+    white-space: nowrap;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* API key modal */
+  .overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.4);
+    display: flex; align-items: center; justify-content: center;
+    z-index: 200; padding: 1rem;
+  }
+  .modal {
+    background: var(--surface); border-radius: var(--radius); padding: 1.5rem;
+    max-width: 400px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.15);
+  }
+  .modal h2 { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+  .modal p  { font-size: 13px; color: var(--text-2); margin-bottom: 16px; line-height: 1.6; }
+  .modal a  { color: var(--blue); }
+
+  @media (max-width: 480px) {
+    .field-row { grid-template-columns: 1fr; }
+    .stats-row { grid-template-columns: repeat(3, 1fr); }
+    .stat-num { font-size: 20px; }
+  }
+
+  .spinner {
+    display: inline-block; width: 16px; height: 16px;
+    border: 2px solid var(--green-text); border-top-color: transparent;
+    border-radius: 50%; animation: spin 0.7s linear infinite; flex-shrink: 0;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="logo"><i class="ti ti-fridge" aria-hidden="true"></i> 食物期限追蹤器</div>
+    <button class="btn btn-icon" onclick="openSettings()" aria-label="設定 API 金鑰" title="設定 API 金鑰">
+      <i class="ti ti-settings" aria-hidden="true"></i>
+    </button>
+  </div>
+</header>
+
+<div class="tab-bar" role="tablist">
+  <div class="tab active" role="tab" aria-selected="true" onclick="switchTab('add')" id="tab-add">
+    <i class="ti ti-plus" aria-hidden="true"></i>新增食物
+  </div>
+  <div class="tab" role="tab" aria-selected="false" onclick="switchTab('list')" id="tab-list">
+    <i class="ti ti-list" aria-hidden="true"></i>食物清單
+  </div>
+</div>
+
+<div class="container">
+
+  <!-- 新增食物 -->
+  <div class="panel active" id="panel-add" role="tabpanel">
+
+    <div class="method-toggle">
+      <div class="method-btn active" id="btn-manual" onclick="switchMethod('manual')">
+        <i class="ti ti-edit" aria-hidden="true"></i>手動輸入
+      </div>
+      <div class="method-btn" id="btn-camera" onclick="switchMethod('camera')">
+        <i class="ti ti-camera" aria-hidden="true"></i>拍照辨識
+      </div>
+    </div>
+
+    <!-- 手動輸入 -->
+    <div id="form-manual">
+      <div class="card">
+        <div class="field">
+          <label>食物名稱 *</label>
+          <input id="f-name" type="text" placeholder="例如：牛奶、雞蛋、花椰菜" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>分類</label>
+            <select id="f-cat">
+              <option value="🥛 乳製品">🥛 乳製品</option>
+              <option value="🥩 肉類">🥩 肉類</option>
+              <option value="🥬 蔬菜">🥬 蔬菜</option>
+              <option value="🍎 水果">🍎 水果</option>
+              <option value="🥚 蛋類">🥚 蛋類</option>
+              <option value="🍞 烘焙">🍞 烘焙</option>
+              <option value="🧃 飲料">🧃 飲料</option>
+              <option value="🥫 罐頭">🥫 罐頭</option>
+              <option value="🍱 其他">🍱 其他</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>存放位置</label>
+            <select id="f-loc">
+              <option value="冷藏">🧊 冷藏</option>
+              <option value="冷凍">❄️ 冷凍</option>
+              <option value="常溫">🌡️ 常溫</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>到期日 *</label>
+            <input id="f-expiry" type="date" />
+          </div>
+          <div class="field">
+            <label>數量</label>
+            <input id="f-qty" type="text" placeholder="例如：1 盒、500g" />
+          </div>
+        </div>
+        <div class="field">
+          <label>備註（選填）</label>
+          <input id="f-note" type="text" placeholder="開封日期、特殊儲存方式…" />
+        </div>
+      </div>
+      <button class="btn btn-primary" onclick="addFood()">
+        <i class="ti ti-plus" aria-hidden="true"></i>加入清單
+      </button>
+    </div>
+
+    <!-- 拍照辨識 -->
+    <div id="form-camera" style="display:none">
+      <input type="file" id="cam-input" accept="image/*" capture="environment" style="display:none" onchange="handlePhoto(event)" />
+      <img id="cam-preview" alt="食物照片預覽" />
+      <div class="camera-zone" id="cam-zone" onclick="document.getElementById('cam-input').click()" role="button" tabindex="0">
+        <i class="ti ti-camera-plus" aria-hidden="true"></i>
+        <p>點擊拍照或選擇圖片</p>
+        <span>AI 將自動辨識食物並填入資料</span>
+      </div>
+
+      <div class="ai-banner" id="ai-banner">
+        <span class="spinner" id="ai-spinner"></span>
+        <span id="ai-msg">AI 辨識中，請稍候…</span>
+      </div>
+
+      <div class="card" id="cam-fields" style="display:none">
+        <div class="field">
+          <label>食物名稱（可修改）</label>
+          <input id="c-name" type="text" />
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>分類</label>
+            <select id="c-cat">
+              <option value="🥛 乳製品">🥛 乳製品</option>
+              <option value="🥩 肉類">🥩 肉類</option>
+              <option value="🥬 蔬菜">🥬 蔬菜</option>
+              <option value="🍎 水果">🍎 水果</option>
+              <option value="🥚 蛋類">🥚 蛋類</option>
+              <option value="🍞 烘焙">🍞 烘焙</option>
+              <option value="🧃 飲料">🧃 飲料</option>
+              <option value="🥫 罐頭">🥫 罐頭</option>
+              <option value="🍱 其他">🍱 其他</option>
+            </select>
+          </div>
+          <div class="field">
+            <label>存放位置</label>
+            <select id="c-loc">
+              <option value="冷藏">🧊 冷藏</option>
+              <option value="冷凍">❄️ 冷凍</option>
+              <option value="常溫">🌡️ 常溫</option>
+            </select>
+          </div>
+        </div>
+        <div class="field-row">
+          <div class="field">
+            <label>到期日</label>
+            <input id="c-expiry" type="date" />
+          </div>
+          <div class="field">
+            <label>數量</label>
+            <input id="c-qty" type="text" placeholder="例如：1 盒" />
+          </div>
+        </div>
+      </div>
+      <button class="btn btn-primary" id="cam-add-btn" onclick="addFoodCam()" style="display:none">
+        <i class="ti ti-plus" aria-hidden="true"></i>加入清單
+      </button>
+    </div>
+
+  </div>
+
+  <!-- 食物清單 -->
+  <div class="panel" id="panel-list" role="tabpanel">
+    <div class="stats-row">
+      <div class="stat"><div class="stat-num" id="s-total">0</div><div class="stat-label">總食物數</div></div>
+      <div class="stat warn"><div class="stat-num" id="s-soon">0</div><div class="stat-label">即將到期</div></div>
+      <div class="stat danger"><div class="stat-num" id="s-expired">0</div><div class="stat-label">已過期</div></div>
+    </div>
+    <div class="filter-row">
+      <div class="chip active" onclick="setFilter('all', this)">全部</div>
+      <div class="chip" onclick="setFilter('ok', this)">新鮮</div>
+      <div class="chip" onclick="setFilter('soon', this)">即將到期</div>
+      <div class="chip" onclick="setFilter('expired', this)">已過期</div>
+    </div>
+    <div class="food-list" id="food-list" role="list"></div>
+  </div>
+
+</div>
+
+<!-- API Key settings overlay -->
+<div class="overlay" id="settings-overlay" style="display:none" role="dialog" aria-modal="true" aria-label="設定 API 金鑰">
+  <div class="modal">
+    <h2><i class="ti ti-key" style="margin-right:6px;vertical-align:-2px"></i>設定 Anthropic API 金鑰</h2>
+    <p>拍照辨識功能需要 Anthropic API 金鑰。金鑰僅儲存在你的瀏覽器本機，不會上傳至任何伺服器。<br><br>
+    取得方式：前往 <a href="https://console.anthropic.com" target="_blank" rel="noopener">console.anthropic.com</a> → API Keys → 建立新金鑰。</p>
+    <div class="field">
+      <label>API 金鑰</label>
+      <input id="api-key-input" type="password" placeholder="sk-ant-..." />
+    </div>
+    <div style="display:flex; gap:8px; margin-top:14px;">
+      <button class="btn btn-primary" style="flex:1" onclick="saveKey()">儲存</button>
+      <button class="btn" onclick="closeSettings()">取消</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+'use strict';
+
+// ── Storage ──────────────────────────────────────────────
+const STORAGE_KEY = 'food_expiry_items';
+
+function loadFoods() {
+  try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || '[]'); } catch { return []; }
+}
+function saveFoods(arr) {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+}
+
+let foods = loadFoods();
+
+// ── Helpers ──────────────────────────────────────────────
+function daysFromNow(n) {
+  const d = new Date();
+  d.setDate(d.getDate() + n);
+  return d.toISOString().split('T')[0];
+}
+
+function getStatus(expiry) {
+  const today = new Date(); today.setHours(0,0,0,0);
+  const exp   = new Date(expiry + 'T00:00:00');
+  const diff  = Math.round((exp - today) / 86400000);
+  if (diff < 0)  return { label: `過期 ${Math.abs(diff)} 天`, cls: 'badge-exp',  itemCls: 'expired',  days: diff };
+  if (diff <= 3) return { label: `${diff} 天後到期`,          cls: 'badge-soon', itemCls: 'expiring', days: diff };
+  return             { label: `${diff} 天後到期`,              cls: 'badge-ok',   itemCls: '',         days: diff };
+}
+
+function emoji(cat) { return (cat || '🍱').split(' ')[0]; }
+
+// ── Tabs ─────────────────────────────────────────────────
+function switchTab(tab) {
+  ['add','list'].forEach(t => {
+    document.getElementById('tab-' + t).classList.toggle('active', t === tab);
+    document.getElementById('tab-' + t).setAttribute('aria-selected', t === tab);
+    document.getElementById('panel-' + t).classList.toggle('active', t === tab);
+  });
+  if (tab === 'list') renderList();
+}
+
+// ── Add method ───────────────────────────────────────────
+function switchMethod(m) {
+  document.getElementById('btn-manual').classList.toggle('active', m === 'manual');
+  document.getElementById('btn-camera').classList.toggle('active', m === 'camera');
+  document.getElementById('form-manual').style.display = m === 'manual' ? '' : 'none';
+  document.getElementById('form-camera').style.display = m === 'camera' ? '' : 'none';
+}
+
+// ── Manual add ───────────────────────────────────────────
+function addFood() {
+  const name   = document.getElementById('f-name').value.trim();
+  const expiry = document.getElementById('f-expiry').value;
+  if (!name)   { showToast('請輸入食物名稱'); return; }
+  if (!expiry) { showToast('請選擇到期日');   return; }
+
+  foods.push({
+    id:     Date.now(),
+    name,
+    cat:    document.getElementById('f-cat').value,
+    loc:    document.getElementById('f-loc').value,
+    expiry,
+    qty:    document.getElementById('f-qty').value  || '1 份',
+    note:   document.getElementById('f-note').value || '',
+    added:  new Date().toISOString().split('T')[0],
+  });
+  saveFoods(foods);
+  updateStats();
+  showToast('✓ 已加入清單');
+
+  ['f-name','f-expiry','f-qty','f-note'].forEach(id => document.getElementById(id).value = '');
+}
+
+// ── Camera / AI ──────────────────────────────────────────
+async function handlePhoto(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const preview = document.getElementById('cam-preview');
+  preview.src = URL.createObjectURL(file);
+  preview.style.display = 'block';
+
+  const zone = document.getElementById('cam-zone');
+  zone.style.display = 'none';
+
+  const banner  = document.getElementById('ai-banner');
+  const spinner = document.getElementById('ai-spinner');
+  const msg     = document.getElementById('ai-msg');
+
+  banner.className = 'ai-banner show';
+  spinner.style.display = '';
+  msg.textContent = 'AI 辨識中，請稍候…';
+
+  const apiKey = localStorage.getItem('anthropic_api_key') || '';
+  if (!apiKey) {
+    banner.className = 'ai-banner show error';
+    spinner.style.display = 'none';
+    msg.textContent = '尚未設定 API 金鑰，請點右上角設定後再試。';
+    showFields('', '', '', '');
+    return;
+  }
+
+  const base64 = await toBase64(file);
+
+  try {
+    const resp = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true',
+      },
+      body: JSON.stringify({
+        model: 'claude-sonnet-4-6',
+        max_tokens: 512,
+        system: '你是食物辨識助手。請辨識圖片中的食物，僅回傳純 JSON（不含 markdown 或說明），格式：{"name":"食物名稱","cat":"分類","loc":"冷藏或冷凍或常溫","expiry_days":數字}。分類只能是以下之一：🥛 乳製品、🥩 肉類、🥬 蔬菜、🍎 水果、🥚 蛋類、🍞 烘焙、🧃 飲料、🥫 罐頭、🍱 其他。expiry_days 是從今天起預估的保存天數（整數）。',
+        messages: [{
+          role: 'user',
+          content: [
+            { type: 'image', source: { type: 'base64', media_type: file.type, data: base64 } },
+            { type: 'text', text: '請辨識這個食物。' }
+          ]
+        }]
+      })
+    });
+
+    if (!resp.ok) {
+      const err = await resp.json().catch(() => ({}));
+      throw new Error(err.error?.message || `HTTP ${resp.status}`);
+    }
+
+    const data = await resp.json();
+    const raw  = (data.content || []).map(c => c.text || '').join('').trim();
+    const clean = raw.replace(/```json|```/g, '').trim();
+    const parsed = JSON.parse(clean);
+
+    banner.className = 'ai-banner show';
+    spinner.style.display = 'none';
+    msg.textContent = `已辨識為「${parsed.name}」，請確認下方資料`;
+
+    showFields(
+      parsed.name  || '',
+      parsed.cat   || '🍱 其他',
+      parsed.loc   || '冷藏',
+      parsed.expiry_days ? daysFromNow(parsed.expiry_days) : ''
+    );
+
+  } catch (err) {
+    banner.className = 'ai-banner show error';
+    spinner.style.display = 'none';
+    msg.textContent = `辨識失敗（${err.message}），請手動填寫`;
+    showFields('', '', '', '');
+  }
+}
+
+function showFields(name, cat, loc, expiry) {
+  document.getElementById('c-name').value   = name;
+  document.getElementById('c-expiry').value = expiry;
+  document.getElementById('c-qty').value    = '';
+
+  const catEl = document.getElementById('c-cat');
+  for (const o of catEl.options) if (o.value === cat) { catEl.value = cat; break; }
+
+  const locEl = document.getElementById('c-loc');
+  for (const o of locEl.options) if (o.value === loc) { locEl.value = loc; break; }
+
+  document.getElementById('cam-fields').style.display = '';
+  document.getElementById('cam-add-btn').style.display = '';
+}
+
+function addFoodCam() {
+  const name   = document.getElementById('c-name').value.trim();
+  const expiry = document.getElementById('c-expiry').value;
+  if (!name)   { showToast('請確認食物名稱'); return; }
+  if (!expiry) { showToast('請選擇到期日');   return; }
+
+  foods.push({
+    id:     Date.now(),
+    name,
+    cat:    document.getElementById('c-cat').value,
+    loc:    document.getElementById('c-loc').value,
+    expiry,
+    qty:    document.getElementById('c-qty').value || '1 份',
+    note:   '',
+    added:  new Date().toISOString().split('T')[0],
+  });
+  saveFoods(foods);
+  updateStats();
+  showToast('✓ 已加入清單');
+  resetCamera();
+}
+
+function resetCamera() {
+  document.getElementById('cam-preview').style.display = 'none';
+  document.getElementById('cam-zone').style.display = '';
+  document.getElementById('ai-banner').className = 'ai-banner';
+  document.getElementById('cam-fields').style.display = 'none';
+  document.getElementById('cam-add-btn').style.display = 'none';
+  document.getElementById('cam-input').value = '';
+}
+
+function toBase64(file) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload  = () => res(r.result.split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(file);
+  });
+}
+
+// ── List ─────────────────────────────────────────────────
+let filterMode = 'all';
+
+function setFilter(f, el) {
+  filterMode = f;
+  document.querySelectorAll('.chip').forEach(c => c.classList.remove('active'));
+  el.classList.add('active');
+  renderList();
+}
+
+function renderList() {
+  updateStats();
+  const list = document.getElementById('food-list');
+
+  const all = [...foods];
+  const filtered = all
+    .filter(f => {
+      const s = getStatus(f.expiry);
+      if (filterMode === 'ok')      return s.days >= 4;
+      if (filterMode === 'soon')    return s.days >= 0 && s.days <= 3;
+      if (filterMode === 'expired') return s.days < 0;
+      return true;
+    })
+    .sort((a, b) => new Date(a.expiry) - new Date(b.expiry));
+
+  if (filtered.length === 0) {
+    list.innerHTML = `<div class="empty" role="listitem"><i class="ti ti-inbox" aria-hidden="true"></i><p>這裡沒有食物</p></div>`;
+    return;
+  }
+
+  list.innerHTML = filtered.map(f => {
+    const s = getStatus(f.expiry);
+    const meta = [f.qty, f.loc, `到期：${f.expiry}`, f.note].filter(Boolean).join(' · ');
+    return `
+    <div class="food-item ${s.itemCls}" role="listitem">
+      <div class="food-emoji" aria-hidden="true">${emoji(f.cat)}</div>
+      <div class="food-info">
+        <div class="food-name">${esc(f.name)}</div>
+        <div class="food-meta">${esc(meta)}</div>
+      </div>
+      <div class="badge ${s.cls}">${s.label}</div>
+      <div class="food-actions">
+        <button class="btn btn-icon btn-danger" onclick="deleteFood(${f.id})" aria-label="刪除 ${esc(f.name)}">
+          <i class="ti ti-trash" aria-hidden="true"></i>
+        </button>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function deleteFood(id) {
+  foods = foods.filter(f => f.id !== id);
+  saveFoods(foods);
+  renderList();
+  showToast('已刪除');
+}
+
+function updateStats() {
+  const all = foods;
+  document.getElementById('s-total').textContent   = all.length;
+  document.getElementById('s-soon').textContent    = all.filter(f => { const s = getStatus(f.expiry); return s.days >= 0 && s.days <= 3; }).length;
+  document.getElementById('s-expired').textContent = all.filter(f => getStatus(f.expiry).days < 0).length;
+}
+
+// ── API Key settings ──────────────────────────────────────
+function openSettings() {
+  document.getElementById('api-key-input').value = localStorage.getItem('anthropic_api_key') || '';
+  document.getElementById('settings-overlay').style.display = 'flex';
+}
+function closeSettings() {
+  document.getElementById('settings-overlay').style.display = 'none';
+}
+function saveKey() {
+  const val = document.getElementById('api-key-input').value.trim();
+  if (val) localStorage.setItem('anthropic_api_key', val);
+  else localStorage.removeItem('anthropic_api_key');
+  closeSettings();
+  showToast('✓ 設定已儲存');
+}
+document.getElementById('settings-overlay').addEventListener('click', e => {
+  if (e.target === document.getElementById('settings-overlay')) closeSettings();
+});
+
+// ── Toast ─────────────────────────────────────────────────
+let toastTimer;
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.classList.remove('show'), 2400);
+}
+
+// ── Escape HTML ───────────────────────────────────────────
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Init ──────────────────────────────────────────────────
+document.getElementById('f-expiry').min = new Date().toISOString().split('T')[0];
+updateStats();
+</script>
+</body>
+</html>
